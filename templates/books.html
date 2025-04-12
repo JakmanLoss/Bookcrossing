@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Доступные книги</title>
+</head>
+<body>
+    <h1>Доступные книги</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <ul>
+    {% for book in books %}
+        <li>{{ book.title }} - {{ book.author }} <a href="{{ url_for('take_book', book_id=book.id) }}">Забрать</a></li>
+    {% endfor %}
+    </ul>
+    <a href="{{ url_for('dashboard') }}">Назад в кабинет</a>
+</body>
+</html>

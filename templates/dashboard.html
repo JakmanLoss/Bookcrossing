@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Личный кабинет</title>
+</head>
+<body>
+    <h1>Личный кабинет</h1>
+    <p>Привет, {{ current_user.email }}!</p>
+    <a href="{{ url_for('add_book') }}">Добавить книгу</a> |
+    <a href="{{ url_for('books') }}">Посмотреть доступные книги</a> |
+    <a href="{{ url_for('logout') }}">Выйти</a>
+    <h2>Ваши книги:</h2>
+    <ul>
+    {% for book in books %}
+        <li>{{ book.title }} - {{ book.author }} ({{ 'Доступна' if book.available else 'Забрана' }})</li>
+    {% endfor %}
+    </ul>
+</body>
+</html>
