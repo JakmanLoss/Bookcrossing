@@ -15,22 +15,33 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Модель пользователя
 class User(UserMixin, db.Model):
+    """Модель пользователя для хранения данных об аккаунте."""
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
 
     def set_password(self, password):
-        """Устанавливает хэш пароля."""
+        """Хэширует и сохраняет пароль пользователя.
+
+        Args:
+            password (str): Пароль в виде строки.
+        """
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Проверяет пароль."""
+        """Проверяет, совпадает ли введённый пароль с хэшированным.
+
+        Args:
+            password (str): Пароль для проверки.
+
+        Returns:
+            bool: True, если пароль совпадает, иначе False.
+        """
         return check_password_hash(self.password_hash, password)
 
-# Модель книги
 class Book(db.Model):
+    """Модель книги для хранения информации о книгах."""
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
@@ -40,36 +51,54 @@ class Book(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Загружает пользователя по ID."""
+    """Загружает пользователя по ID для Flask-Login.
+
+    Args:
+        user_id (str): ID пользователя в виде строки.
+
+    Returns:
+        User: Объект пользователя, если найден, иначе None.
+    """
     return User.query.get(int(user_id))
 
-# Форма регистрации
 class RegisterForm(FlaskForm):
+    """Форма для регистрации нового пользователя."""
     email = StringField('Email', validators=[DataRequired()])
     password = PasswordField('Пароль', validators=[DataRequired()])
     submit = SubmitField('Зарегистрироваться')
 
-# Форма входа
 class LoginForm(FlaskForm):
+    """Форма для входа пользователя в систему."""
     email = StringField('Email', validators=[DataRequired()])
     password = PasswordField('Пароль', validators=[DataRequired()])
     submit = SubmitField('Войти')
 
-# Форма добавления книги
 class BookForm(FlaskForm):
+    """Форма для добавления новой книги."""
     title = StringField('Название', validators=[DataRequired()])
     author = StringField('Автор', validators=[DataRequired()])
     cover = FileField('Обложка')
     submit = SubmitField('Добавить')
 
-# Главная страница
 @app.route('/')
 def index():
+    """Отображает главную страницу сайта.
+
+    Returns:
+        str: HTML-страница главной страницы.
+    """
     return render_template('index.html')
 
-# Регистрация
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Обрабатывает регистрацию нового пользователя.
+
+    Если пользователь с таким email уже существует, отображается сообщение об ошибке.
+    После успешной регистрации пользователь перенаправляется на страницу входа.
+
+    Returns:
+        str: HTML-страница регистрации или перенаправление на страницу входа.
+    """
     form = RegisterForm()
     if form.validate_on_submit():
         if User.query.filter_by(email=form.email.data).first():
@@ -83,9 +112,16 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
 
-# Вход
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Обрабатывает вход пользователя в систему.
+
+    Проверяет email и пароль пользователя. При успешном входе перенаправляет
+    в личный кабинет, иначе отображает сообщение об ошибке.
+
+    Returns:
+        str: HTML-страница входа или перенаправление в личный кабинет.
+    """
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
@@ -95,17 +131,29 @@ def login():
         flash('Неверный email или пароль!')
     return render_template('login.html', form=form)
 
-# Личный кабинет
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    """Отображает личный кабинет пользователя.
+
+    Показывает список книг, добавленных текущим пользователем.
+
+    Returns:
+        str: HTML-страница личного кабинета.
+    """
     books = Book.query.filter_by(user_id=current_user.id).all()
     return render_template('dashboard.html', books=books)
 
-# Добавление книги
 @app.route('/add_book', methods=['GET', 'POST'])
 @login_required
 def add_book():
+    """Обрабатывает добавление новой книги.
+
+    После успешного добавления книги пользователь перенаправляется в личный кабинет.
+
+    Returns:
+        str: HTML-страница добавления книги или перенаправление в личный кабинет.
+    """
     form = BookForm()
     if form.validate_on_submit():
         book = Book(
@@ -119,16 +167,32 @@ def add_book():
         return redirect(url_for('dashboard'))
     return render_template('add_book.html', form=form)
 
-# Просмотр доступных книг
 @app.route('/books')
 def books():
+    """Отображает список доступных книг.
+
+    Показывает только книги, которые ещё не забрали (available=True).
+
+    Returns:
+        str: HTML-страница со списком доступных книг.
+    """
     available_books = Book.query.filter_by(available=True).all()
     return render_template('books.html', books=available_books)
 
-# Забрать книгу
 @app.route('/take_book/<int:book_id>')
 @login_required
 def take_book(book_id):
+    """Обрабатывает взятие книги пользователем.
+
+    Если книга доступна и не принадлежит текущему пользователю, её статус меняется
+    на недоступную. Иначе отображается сообщение об ошибке.
+
+    Args:
+        book_id (int): ID книги, которую пользователь хочет взять.
+
+    Returns:
+        str: Перенаправление на страницу со списком книг.
+    """
     book = Book.query.get_or_404(book_id)
     if book.available and book.user_id != current_user.id:
         book.available = False
@@ -138,10 +202,16 @@ def take_book(book_id):
         flash('Книга недоступна или принадлежит вам!')
     return redirect(url_for('books'))
 
-# Выход
 @app.route('/logout')
 @login_required
 def logout():
+    """Обрабатывает выход пользователя из системы.
+
+    После выхода пользователь перенаправляется на главную страницу.
+
+    Returns:
+        str: Перенаправление на главную страницу.
+    """
     logout_user()
     return redirect(url_for('index'))
 
