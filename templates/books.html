@@ -75,7 +75,10 @@
     </style>
 </head>
 <body>
+    <!-- Заголовок страницы -->
     <h1>Доступные книги</h1>
+
+    <!-- Отображение флэш-сообщений, если они есть -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             {% for message in messages %}
@@ -83,20 +86,31 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-    
+
+    <!-- Контейнер для карточек книг -->
     <div class="books-container">
-        {% for book in books %}
-        <div class="book-card">
-            <img src="{{ url_for('static', filename='covers/' + book.cover) if book.cover else url_for('static', filename='images/default_cover.jpg') }}" alt="Обложка книги" class="book-cover">
-            <div class="book-info">
-                <div class="book-title">{{ book.title }}</div>
-                <div class="book-author">{{ book.author }}</div>
-                <a href="{{ url_for('take_book', book_id=book.id) }}" class="take-btn">Забрать</a>
+        {% if books %}
+            {% for book in books %}
+            <!-- Карточка отдельной книги -->
+            <div class="book-card">
+                <!-- Отображение обложки книги или default.jpg, если обложка не задана -->
+                <img src="{{ url_for('static', filename='uploads/' + (book.cover if book.cover else 'default.jpg')) }}" alt="Обложка книги" class="book-cover">
+                <div class="book-info">
+                    <!-- Название и автор книги -->
+                    <div class="book-title">{{ book.title }}</div>
+                    <div class="book-author">{{ book.author }}</div>
+                    <!-- Кнопка для взятия книги -->
+                    <a href="{{ url_for('take_book', book_id=book.id) }}" class="take-btn">Забрать</a>
+                </div>
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <!-- Сообщение, если нет доступных книг -->
+            <p style="color: #7f8c8d; text-align: center; font-style: italic;">Нет доступных книг.</p>
+        {% endif %}
     </div>
-    
+
+    <!-- Ссылка для возврата в личный кабинет -->
     <a href="{{ url_for('dashboard') }}" class="back-link">Назад в кабинет</a>
 </body>
 </html>

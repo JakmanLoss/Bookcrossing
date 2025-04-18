@@ -40,25 +40,40 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
         }
         .books-list ul {
             list-style-type: none;
             padding: 0;
         }
-        .books-list li {
-            padding: 10px;
+        .book-item {
+            padding: 15px;
             border-bottom: 1px solid #eee;
             display: flex;
-            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
         }
-        .books-list li:last-child {
+        .book-item:last-child {
             border-bottom: none;
+        }
+        .book-item img {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .book-info {
+            flex-grow: 1;
         }
         .available {
             color: #2ecc71;
         }
         .unavailable {
             color: #e74c3c;
+        }
+        .no-books {
+            color: #7f8c8d;
+            font-style: italic;
         }
     </style>
 </head>
@@ -67,25 +82,51 @@
         <h1>Личный кабинет</h1>
         <p>Привет, {{ current_user.email }}!</p>
     </div>
-    
+
     <div class="actions">
         <a href="{{ url_for('add_book') }}">Добавить книгу</a>
         <a href="{{ url_for('books') }}">Посмотреть доступные книги</a>
         <a href="{{ url_for('logout') }}">Выйти</a>
     </div>
-    
+
     <div class="books-list">
-        <h2>Ваши книги:</h2>
+        <h2>Ваши добавленные книги:</h2>
+        {% if added_books %}
         <ul>
-            {% for book in books %}
-            <li>
-                <span>{{ book.title }} - {{ book.author }}</span>
-                <span class="{{ 'available' if book.available else 'unavailable' }}">
-                    {{ 'Доступна' if book.available else 'Забрана' }}
-                </span>
+            {% for book in added_books %}
+            <li class="book-item">
+                <img src="{{ url_for('static', filename='uploads/' + (book.cover if book.cover else 'default.jpg')) }}" alt="Обложка книги">
+                <div class="book-info">
+                    <span>{{ book.title }} - {{ book.author }}</span><br>
+                    <span class="{{ 'available' if book.available else 'unavailable' }}">
+                        {{ 'Доступна' if book.available else 'Забрана' }}
+                    </span>
+                </div>
             </li>
             {% endfor %}
         </ul>
+        {% else %}
+        <p class="no-books">Вы пока не добавили ни одной книги.</p>
+        {% endif %}
+    </div>
+
+    <div class="books-list">
+        <h2>Забранные вами книги:</h2>
+        {% if taken_books %}
+        <ul>
+            {% for book in taken_books %}
+            <li class="book-item">
+                <img src="{{ url_for('static', filename='uploads/' + (book.cover if book.cover else 'default.jpg')) }}" alt="Обложка книги">
+                <div class="book-info">
+                    <span>{{ book.title }} - {{ book.author }}</span><br>
+                    <span class="unavailable">Забрана вами</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="no-books">Вы пока не забрали ни одной книги.</p>
+        {% endif %}
     </div>
 </body>
 </html>

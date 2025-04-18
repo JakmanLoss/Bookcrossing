@@ -31,8 +31,7 @@ def allowed_file(filename):
     Returns:
         bool: True, если расширение файла разрешено, иначе False.
     """
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 class User(UserMixin, db.Model):
     """Модель пользователя для хранения данных об аккаунте."""
@@ -64,7 +63,7 @@ class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
-    cover = db.Column(db.String(200))  # Путь к обложке
+    cover = db.Column(db.String(200))  # Имя файла обложки
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Кто добавил
     available = db.Column(db.Boolean, default=True)
     taken_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Кто забрал
@@ -170,7 +169,8 @@ def dashboard():
 def add_book():
     """Обрабатывает добавление новой книги.
 
-    Сохраняет загруженную обложку в папку и добавляет книгу в базу данных.
+    Сохраняет загруженную обложку в папку static/uploads и записывает только имя файла
+    в базу данных. Если обложка не загружена, используется default.jpg.
     После успешного добавления пользователь перенаправляется в личный кабинет.
 
     Returns:
@@ -178,12 +178,14 @@ def add_book():
     """
     form = BookForm()
     if form.validate_on_submit():
-        cover_filename = None
+        cover_filename = 'default.jpg'  # Имя файла по умолчанию
         if form.cover.data and allowed_file(form.cover.data.filename):
             filename = secure_filename(form.cover.data.filename)
-            cover_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            form.cover.data.save(cover_filename)
+            # Сохраняем файл в папку static/uploads
+            form.cover.data.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            cover_filename = filename  # Сохраняем только имя файла
 
+        # Создаём новую книгу с данными из формы
         book = Book(
             title=form.title.data,
             author=form.author.data,
