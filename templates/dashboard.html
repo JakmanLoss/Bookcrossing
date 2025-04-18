@@ -9,10 +9,36 @@
     <a href="{{ url_for('add_book') }}">Добавить книгу</a> |
     <a href="{{ url_for('books') }}">Посмотреть доступные книги</a> |
     <a href="{{ url_for('logout') }}">Выйти</a>
-    <h2>Ваши книги:</h2>
+
+    <h2>Ваши добавленные книги:</h2>
     <ul>
-    {% for book in books %}
-        <li>{{ book.title }} - {{ book.author }} ({{ 'Доступна' if book.available else 'Забрана' }})</li>
+    {% for book in added_books %}
+        <li>
+            {% if book.cover %}
+                <img src="{{ url_for('static', filename=book.cover.replace('static/', '')) }}" alt="{{ book.title }}" width="100" onerror="this.src='{{ url_for('static', filename='default_cover.jpg') }}'">
+            {% else %}
+                <p>Без обложки</p>
+            {% endif %}
+            {{ book.title }} - {{ book.author }} ({{ 'Доступна' if book.available else 'Забрана' }})
+        </li>
+    {% else %}
+        <li>Вы ещё не добавили книги.</li>
+    {% endfor %}
+    </ul>
+
+    <h2>Книги, которые вы забрали:</h2>
+    <ul>
+    {% for book in taken_books %}
+        <li>
+            {% if book.cover %}
+                <img src="{{ url_for('static', filename=book.cover.replace('static/', '')) }}" alt="{{ book.title }}" width="100" onerror="this.src='{{ url_for('static', filename='default_cover.jpg') }}'">
+            {% else %}
+                <p>Без обложки</p>
+            {% endif %}
+            {{ book.title }} - {{ book.author }}
+        </li>
+    {% else %}
+        <li>Вы ещё не забрали книги.</li>
     {% endfor %}
     </ul>
 </body>

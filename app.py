@@ -5,15 +5,34 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, FileField
 from wtforms.validators import DataRequired
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bookcrossing.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/uploads'  # Папка для сохранения обложек
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}  # Разрешённые форматы
+
+# Создаём папку для загрузок, если её нет
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+def allowed_file(filename):
+    """Проверяет, разрешён ли формат файла.
+
+    Args:
+        filename (str): Имя файла.
+
+    Returns:
+        bool: True, если расширение файла разрешено, иначе False.
+    """
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 class User(UserMixin, db.Model):
     """Модель пользователя для хранения данных об аккаунте."""
@@ -46,8 +65,9 @@ class Book(db.Model):
     title = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
     cover = db.Column(db.String(200))  # Путь к обложке
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Кто добавил
     available = db.Column(db.Boolean, default=True)
+    taken_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Кто забрал
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -136,29 +156,38 @@ def login():
 def dashboard():
     """Отображает личный кабинет пользователя.
 
-    Показывает список книг, добавленных текущим пользователем.
+    Показывает список книг, добавленных текущим пользователем, и книг, которые он забрал.
 
     Returns:
         str: HTML-страница личного кабинета.
     """
-    books = Book.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard.html', books=books)
+    added_books = Book.query.filter_by(user_id=current_user.id).all()
+    taken_books = Book.query.filter_by(taken_by=current_user.id).all()
+    return render_template('dashboard.html', added_books=added_books, taken_books=taken_books)
 
 @app.route('/add_book', methods=['GET', 'POST'])
 @login_required
 def add_book():
     """Обрабатывает добавление новой книги.
 
-    После успешного добавления книги пользователь перенаправляется в личный кабинет.
+    Сохраняет загруженную обложку в папку и добавляет книгу в базу данных.
+    После успешного добавления пользователь перенаправляется в личный кабинет.
 
     Returns:
         str: HTML-страница добавления книги или перенаправление в личный кабинет.
     """
     form = BookForm()
     if form.validate_on_submit():
+        cover_filename = None
+        if form.cover.data and allowed_file(form.cover.data.filename):
+            filename = secure_filename(form.cover.data.filename)
+            cover_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            form.cover.data.save(cover_filename)
+
         book = Book(
             title=form.title.data,
             author=form.author.data,
+            cover=cover_filename,
             user_id=current_user.id
         )
         db.session.add(book)
@@ -185,7 +214,7 @@ def take_book(book_id):
     """Обрабатывает взятие книги пользователем.
 
     Если книга доступна и не принадлежит текущему пользователю, её статус меняется
-    на недоступную. Иначе отображается сообщение об ошибке.
+    на недоступную, и записывается ID пользователя, который её забрал.
 
     Args:
         book_id (int): ID книги, которую пользователь хочет взять.
@@ -196,6 +225,7 @@ def take_book(book_id):
     book = Book.query.get_or_404(book_id)
     if book.available and book.user_id != current_user.id:
         book.available = False
+        book.taken_by = current_user.id
         db.session.commit()
         flash('Книга успешно забрана!')
     else:
